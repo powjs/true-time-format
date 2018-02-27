@@ -1,0 +1,21 @@
+{
+  "name": "true-time-format",
+  "version": "0.1.0",
+  "description": "True class to parse, format, and manipulate datetimes.",
+  "main": "index.js",
+  "repository": "git@github.com:powjs/true-time-format",
+  "author": "YU HengChun <achun.shx@qq.com>",
+  "license": "BSD-2-Clause",
+  "keywords": [
+    "Datetime",
+    "format",
+    "parser"
+  ],
+  "scripts": {
+    "test": "nyc tape tests/*.js"
+  },
+  "devDependencies": {
+    "nyc": "^11.4.1",
+    "tape": "^4.9.0"
+  }
+}
