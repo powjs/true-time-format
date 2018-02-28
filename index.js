@@ -183,7 +183,7 @@ class Parser {
   constructor(layout) {
     let m = layout.match(/^\d+/);
     this.offset = 0;
-    this.y00 = m ? parseInt(m[0]) * 100 : 0;
+    this.since = m ? parseInt(m[0]) * 100 : 0;
     if (m) layout = layout.slice(m[0].length);
 
     m = layout.match(/[+-]\d{4}$/);
@@ -311,9 +311,9 @@ class Parser {
       seq[0] = x.slice(0, b);
     }
 
-    let y00 = this.y00;
+    let since = this.since;
     for (let i = 0; i < seq.length; i++)
-      if (!assign(layout[i], seq[i], t, y00))
+      if (!assign(layout[i], seq[i], t, since))
         return null;
     return assert(t);
   }
@@ -323,7 +323,7 @@ function trim(s, b, len) {
   return s.substring(0, b) + ' ' + s.substring(b + len);
 }
 
-function assign(k, x, t, y00) {
+function assign(k, x, t, since) {
   let v;
   if (x[0] <= '9')
     v = parseInt(x);
@@ -334,7 +334,7 @@ function assign(k, x, t, y00) {
 
   switch (k) {
     case 'Y':
-      t.year = v + (x.length === 2 ? y00 : 0);
+      t.year = v + (x.length === 2 ? since : 0);
       break;
     case 'M':
       t.month = v;
