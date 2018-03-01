@@ -8,6 +8,7 @@ let
   ],
   // https://www.ietf.org/timezones/data/leapseconds
   EXPIRESDAY = 20181228,
+  EXPIRED = `Leapseconds list has expired on ${EXPIRESDAY}, ${ISSUES}`,
   LEEPSECOND = [
     19720630,
     19721231,
@@ -93,10 +94,15 @@ let
   };
 
 function offset(s) {
-  let x = parseInt(s), y = x % 100;
-  if (x < -1200 || x > 1200 || y < -59 || y > 59)
-    throw Error('invalid Time offset from UTC: ' + s);
+  let x = parseInt(s);
+  if (invalidOffset(x))
+    throw Error('Invalid Time offset from UTC: ' + s);
   return x;
+}
+
+function invalidOffset(x) {
+  let y = x % 100;
+  return x < -1200 || x > 1200 || y < -59 || y > 59;
 }
 
 class Time {
@@ -154,8 +160,7 @@ function assert(t) {
   if (t.second === 60) {
     // or (Y<<9)+(M<5)+D
     let x = t.year * 10000 + t.month * 100 + t.day;
-    if (x > EXPIRESDAY)
-      throw new Error(`Leapseconds list has expired on ${EXPIRESDAY}, ${ISSUES}`);
+    if (x > EXPIRESDAY) throw new Error(EXPIRED);
 
     if (t.hour != 23 || t.minute != 59 || t.day > 31 || LEEPSECOND.indexOf(x) < 0)
       return null;
@@ -215,16 +220,26 @@ class Parser {
     }
 
     m = timeString
-      .match(/(GMT|UTC|Z)([+-]?)(\d{0,2}):?(\d{0,2})/);
+      .match(/(GMT|UTC|Z)([+-]?)(\d{0,2})(:?)(\d{0,2})/);
     i = m && 1 || 0;
+    if (!i) {
+      m = timeString.match(/([+-])(\d{1,2})(:?)(\d{0,2})$/);
+      // Exclude: Feb-2018, Feb-28-2018, 28-Feb-2018, 28-02-2018, -69
+      if (m && m[1] === '-' && !m[3]) {
+        let x = timeString.substring(0, m.index).match(/(\d+|[A-Za-z]+)$/);
+        if (!m.index || x && (x.index === 0 || timeString[x.index - 1] === '-'))
+          m = null;
+      }
+    }
 
-    if (!i) m = timeString.match(/([+-])(\d{1,2}):?(\d{0,2})$/);
+    if (m && m[0].endsWith(':')) return '';
 
     if (!m)
       t.offset = this.offset;
     else {
-      t.offset = 100 * parseInt(m[i + 2] || '0') + parseInt(m[i + 3] || '0');
+      t.offset = 100 * parseInt(m[i + 2] || '0') + parseInt(m[i + 4] || '0');
       if (m[i + 1] === '-') t.offset = -t.offset;
+      if(invalidOffset(t.offset)) return '';
       timeString = trim(timeString, m.index, m[0].length);
     }
 
@@ -251,21 +266,25 @@ class Parser {
   parse(timeString) {
     let
       t = new Time(),
-      seq = this.normalize(timeString, t)
-        .split(/(\d+|[A-Za-z]+)/)
-        .filter(function(s, i) {
-          return i & 1;
-        }),
-
       layout = this.layout,
-      form = seq.reduce(function(sum, s) {
-          return sum + (s[0] > '9' ? 'M' : s.length <= 2 && 2 ||
-          s.length <= 14 && s.length || '?');
-        }, '');
+      normal = this.normalize(timeString, t),
+      bc = normal.startsWith('-') || normal.startsWith('BC'),
+      seq = normal.split(/[^\dA-Za-z]+/),
+      form;
+
+    if (bc) seq.shift();
+
+    form = seq.reduce(function(sum, s) {
+      return sum + (s[0] > '9' ? 'M' : s.length <= 2 && 2 ||
+      s.length <= 14 && s.length || '?');
+    }, '');
+
     if (!form || form.length > 6) return null;
 
     if (!layout)
       layout = STYLES[form] || '';
+
+    if (bc && layout && layout[0] !== 'Y') return null;
 
     if (layout && layout.length !== form.length && form.length > 2) {
       let
@@ -274,7 +293,7 @@ class Parser {
       if (x && layout.search(/[YMD]{3}/, i) === i) {
         seq = [x.slice(0, -4), x.slice(-4, -2), x.slice(-2)]
           .concat(seq.slice(0, i)).concat(seq.slice(i + 1));
-        layout = layout.slice(i,i+3) + layout.slice(0, i) + layout.slice(i + 3);
+        layout = layout.slice(i, i + 3) + layout.slice(0, i) + layout.slice(i + 3);
         form = layout;
       }
     }
@@ -284,10 +303,10 @@ class Parser {
       layout = layout || 'YMDhms';
       let x = seq[0], b = 4,i = layout.search(/[YMD]{3}/);
 
-      if(i===-1) return null;
+      if (i === -1) return null;
 
-      if(i)
-        layout = layout.slice(i,i+3) +
+      if (i)
+        layout = layout.slice(i, i + 3) +
           layout.slice(0, i) + layout.slice(i + 3);
 
       if (form === '86' || form === '66') {
@@ -311,10 +330,12 @@ class Parser {
       seq[0] = x.slice(0, b);
     }
 
-    let since = this.since;
+    let since = bc ? 0 : this.since;
+
     for (let i = 0; i < seq.length; i++)
       if (!assign(layout[i], seq[i], t, since))
         return null;
+    if (bc) t.year = -t.year;
     return assert(t);
   }
 }
