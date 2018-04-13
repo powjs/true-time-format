@@ -121,7 +121,7 @@ class Time {
 
   toString() {
     let
-      Y = this.year,
+      Y = xx(this.year, 4),
       M = xx(this.month),
       D = xx(this.day),
       h = xx(this.hour),
@@ -149,8 +149,14 @@ function UTCoffsets(x) {
   return s + xx(x / 100) + xx(x % 100);
 }
 
-function xx(x) {
-  return (x < 10 && '0' || '') + x.toString();
+function xx(x, mid) {
+  return x.toLocaleString(
+    'en',
+    {
+      minimumIntegerDigits: mid || 2,
+      useGrouping: false
+    }
+  );
 }
 
 function assert(t) {
@@ -239,7 +245,7 @@ class Parser {
     else {
       t.offset = 100 * parseInt(m[i + 2] || '0') + parseInt(m[i + 4] || '0');
       if (m[i + 1] === '-') t.offset = -t.offset;
-      if(invalidOffset(t.offset)) return '';
+      if (invalidOffset(t.offset)) return '';
       timeString = trim(timeString, m.index, m[0].length);
     }
 
