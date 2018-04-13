@@ -1,6 +1,6 @@
 {
   "name": "true-time-format",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "True class to parse, format, and manipulate datetimes.",
   "main": "index.js",
   "repository": "git@github.com:powjs/true-time-format",
